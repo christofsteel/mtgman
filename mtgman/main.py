@@ -4,6 +4,7 @@ import argparse
 import scrython
 
 def format_pos_arg(key, value):
+
     if value.startswith(">") or \
             value.startswith("<") or \
             value.startswith("=") or \

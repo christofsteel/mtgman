@@ -6,7 +6,7 @@ setup(
         packages=find_packages(),
         author="Christoph Stahl",
         author_email="christoph.stahl@tu-dortmund.de",
-        install_requires=["sqlalchemy", "scrython"],
+        install_requires=["sqlalchemy", "scrython", "ply"],
         entry_points = {
             "console_scripts": [
                 "mtgman = mtgman.main:main"

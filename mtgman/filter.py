@@ -1,10 +1,10 @@
 import ply
 
-class Token:    
-    key = None
+class Filter:    
+    key = ""
     allkeys = []
 
-    def __init__(self, value, operand=":", exact=False):
+    def __init__(self, value, operand="", exact=False):
         self.value = value
         self.op = operand
         self.exact = "!" if exact else ""
@@ -13,25 +13,18 @@ class Token:
         raise NotImplementedError
 
     def __str__(self):
-        return "{key}{op}{value}".format(key=self.key, value=self.value, op=self.op)
+        return "{exact}{key}{op}{value}".format(**self.__dict__)
 
-class Name(Token):
-    def __str__(self):
-        return "{exact}{value}".format(key=self.key, exact=self.exact, value=self.value, op=self.op)
+class Name(Filter):
+    pass
 
-class Paren:
-    def __init__(self, ex):
-        self.ex = ex
-
-    def __str__(self):
-        return "({ex})".format(ex=self.ex)
 
 class Negation:
     def __init__(self, ex):
         self.ex = ex
 
     def __str__(self):
-        return "-{ex}".format(ex = self.ex)
+        return "-{ex}".format(**self.__dict__)
 
 class Disjunction:
     def __init__(self, ex1, ex2):
@@ -42,7 +35,7 @@ class Disjunction:
         return self.ex1.filter(card) or self.ex2.filter(card)
 
     def __str__(self):
-        return "({ex1} or {ex2})".format(ex1=self.ex1, ex2=self.ex2)
+        return "({ex1} or {ex2})".format(**self.__dict__)
 
 class Conjunction:
     def __init__(self, ex1, ex2):
@@ -53,10 +46,10 @@ class Conjunction:
         return self.ex1.filter(card) and self.ex2.filter(card)
 
     def __str__(self):
-        return "{ex1} {ex2}".format(ex1=self.ex1, ex2=self.ex2)
+        return "{ex1} {ex2}".format(**self.__dict__)
 
 
-list_of_tokens = [
+list_of_filters = [
         ["c","color"],
         ["id","identity"],
         ["has"],
@@ -97,14 +90,14 @@ list_of_tokens = [
         ["lang", "language"],
         ]
 
-tokenClasses = {l[0]: 
-        type("tokenClass_%s" % l, (Token,), {"key": l[0], "allkeys":l})
-        for l in list_of_tokens}
+filterClasses = {l[0]: 
+        type("tokenClass_%s" % l, (Filter,), {"key": l[0], "allkeys":l})
+        for l in list_of_filters}
 
-def findClass(s):
-    for l in list_of_tokens:
+def findFilterClass(s):
+    for l in list_of_filters:
         c = l[0]
         for j in l:
             if s == j:
-                return tokenClasses[c]
+                return filterClasses[c]
 

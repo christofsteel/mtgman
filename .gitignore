@@ -1,0 +1,6 @@
+mtgman.egg-info/*
+venv/*
+test.db
+*.pyc
+parser.out
+parsetab.py

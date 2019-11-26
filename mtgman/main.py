@@ -5,11 +5,45 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
-from .model import Card, BaseCard, Printing, Edition, Base, Block
-from .dbactions import get_scryfall_cards, get_scryfall_sets
+from .model import Card, BaseCard, Printing, Edition, Base, Block, part_of
+from .dbactions import get_scryfall_cards, get_scryfall_sets, find_edition, find_by_scryfall_id
 from uuid import UUID
 import json
 
+def addEdition(edition, json, session):
+        ed = session.query(Edition).get(edition.get("code"))
+        if ed is not None:
+            return ed
+        db_edition = Edition( scryfall_id = UUID(edition.get("id"))
+                       , code = edition.get("code")
+                       , mtgo_code = edition.get("mtgo_code")
+                       , tcgplayer_id = edition.get("tcgplayer_id")
+                       , name = edition.get("name")
+                       , set_type = edition.get("set_type")
+                       , released_at = datetime.datetime.strptime(edition.get("released_at"), "%Y-%m-%d")
+                       , card_count = edition.get("card_count")
+                       , digital = edition.get("digital")
+                       , foil_only = edition.get("foil_only")
+                       , scryfall_uri = edition.get("scryfall_uri")
+                       , uri = edition.get("uri")
+                       , icon_svg_uri = edition.get("icon_svg_uri")
+                       , search_uri = edition.get("search_uri")
+                       )
+        if edition.get("block_code") is not None:
+            block = session.query(Block).get(edition.get("block_code"))
+            if block is None:
+                block = Block(code = edition.get("block_code"), name = edition.get("block"))
+                session.add(block)
+            block.editions.append(db_edition)
+        if edition.get("parent_set_code") is not None:
+            par_ed = session.query(Edition).get(edition.get("parent_set_code"))
+            if par_ed is not None:
+                parent = find_edition(json, edition.get("parent_set_code"))
+                par_ed = addEdition(parent, json,session)
+                session.add(par_ed)
+            db_edition.parent_edition = par_ed
+        session.add(db_edition)
+        return db_edition
 
 def main():
     engine = create_engine("sqlite:///test.db")
@@ -18,49 +52,23 @@ def main():
     Base.metadata.create_all(engine)
     session = Session()
 
-    #editions = get_scryfall_sets()
-    #parent_edition_rel = {}
+    editions = get_scryfall_sets()
+    parent_edition_rel = {}
     
 
-    #for idx, edition in enumerate(editions):
-    #    print(f"({idx + 1}/{len(editions)}) {edition['name']}")
+    for idx, edition in enumerate(editions):
+        print(f"({idx + 1}/{len(editions)}) {edition['name']}")
+        addEdition(edition, editions, session)
+    session.commit()
 
-    #    db_edition = Edition( scryfall_id = UUID(edition.get("id"))
-    #                   , code = edition.get("code")
-    #                   , mtgo_code = edition.get("mtgo_code")
-    #                   , tcgplayer_id = edition.get("tcgplayer_id")
-    #                   , name = edition.get("name")
-    #                   , set_type = edition.get("set_type")
-    #                   , released_at = datetime.datetime.strptime(edition.get("released_at"), "%Y-%m-%d")
-    #                   , card_count = edition.get("card_count")
-    #                   , digital = edition.get("digital")
-    #                   , foil_only = edition.get("foil_only")
-    #                   , scryfall_uri = edition.get("scryfall_uri")
-    #                   , uri = edition.get("uri")
-    #                   , icon_svg_uri = edition.get("icon_svg_uri")
-    #                   , search_uri = edition.get("search_uri")
-    #                   )
-    #    session.add(db_edition)
-    #    if edition.get("block_code") is not None:
-    #        try:
-    #            block = session.query(Block).filter_by(code = edition.get("block_code")).one()
-    #            block.editions.append(db_edition)
-    #        except:
-    #            block = Block(code = edition.get("block_code"), name = edition.get("block"))
-    #            block.editions.append(db_edition)
-    #            session.add(block)
-    #    if edition.get("parent_set_code") is not None:
-    #        if db_edition.id is None:
-    #            session.commit()
-    #        parent_edition_rel[db_edition.id] = edition.get("parent_set_code")
-
-
+        
     #for ed, parent in parent_edition_rel.items():
     #    child_edition = session.query(Edition).get(ed)
     #    parent_edition = session.query(Edition).filter_by(code = parent).one()
     #    parent_edition.child_editions.append(child_edition)
 
-    #session.commit()
+    session.commit()
+
     
     #cards_online = get_scryfall_cards()
     #with open("cards.json", "w") as f:
@@ -116,7 +124,8 @@ def main():
                        , loyalty_str = get("loyalty")
                        , life_modifier = get("life_modifier")
                        , hand_modifier = get("hand_modifier")
-                       )
+                       )            
+            session.execute(part_of.insert(), [{"card_id1": card.id, "card_id2": card2id} for card2id in lget("all_parts")])
             session.add(card)
         try:
             base_card = session.query(BaseCard).join(Edition)\
@@ -156,6 +165,11 @@ def main():
                                 , tcgplayer_id = get("tcgplayer_id")
                                 , frame_effects = lget("frame_effects")
                                 , watermark = get("watermark")
+                                , previewed_at = datetime.datetime.strptime(get("preview").get("previewed_at"), "%Y-%m-%d") if get("preview") is not None else None
+                                , preview_source_uri = get("preview").get("source_uri") if get("preview") is not None else None
+                                , preview_source = get("preview").get("source") if get("preview") is not None else None
+                                , arena_id = get("arena_id")
+
                                 )
             session.add(base_card)
         try:

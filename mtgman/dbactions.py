@@ -28,3 +28,14 @@ def get_scryfall_cards():
 
 def get_scryfall_sets():
     return complete_scrython_data(scrython.sets.Sets())
+
+def find_edition(json, code):
+    for e in json:
+        if e.get("code") == code:
+            return e
+    raise RuntimeError(f"did not find {code} in {[e['code'] for e in json]}")
+
+def find_by_scryfall_id(json, id):
+    for e in json:
+        if e.get("id") == id:
+            return e

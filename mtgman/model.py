@@ -1,5 +1,6 @@
 from sqlalchemy import Column, String, Integer, ForeignKey, Boolean, Date, Table, Float
 from sqlalchemy.orm import relationship, backref
+from sqlalchemy.schema import UniqueConstraint
 from sqlalchemy_utils import UUIDType
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
@@ -45,23 +46,21 @@ def makeScalar(foreign_key, dict_or_type, name=None, foreign_class=None, backref
 
 class Block(Base):
     __tablename__ = "block"
-    id = Column(Integer, primary_key=True)
-    code = Column(String, nullable=False, unique=True)
+    code = Column(String, nullable=False, unique=True, primary_key=True)
     name = Column(String, nullable=False)
 
 class Edition(Base):
     __tablename__ = "edition"
-    id = Column(Integer, primary_key=True)
+    code = Column(String, nullable=False, unique=True, primary_key=True)
     scryfall_id = Column(UUIDType, nullable=False)
-    code = Column(String, nullable=False, unique=True)
     mtgo_code = Column(String)
     tcgplayer_id = Column(Integer)
     name = Column(String, nullable=False, unique=True)
     set_type = Column(String, nullable=False)
     released_at = Column(Date)
-    block_id = Column(Integer, ForeignKey("block.id"))
+    block_code = Column(Integer, ForeignKey("block.code"))
     block = relationship("Block", backref="editions")
-    parent_set_id = Column(Integer, ForeignKey("edition.id"))
+    parent_set_code = Column(Integer, ForeignKey("edition.code"))
     card_count = Column(Integer, nullable=False)
     digital = Column(Boolean, nullable=False)
     foil_only = Column(Boolean, nullable=False)
@@ -69,7 +68,7 @@ class Edition(Base):
     uri = Column(String, nullable=False)
     icon_svg_uri = Column(String, nullable=False)
     search_uri = Column(String, nullable=False)
-    child_editions = relationship("Edition", backref=backref("parent_edition", remote_side=[id]))
+    child_editions = relationship("Edition", backref=backref("parent_edition", remote_side=[code]))
 
 class Collection(Base):
     __tablename__ = "collection"
@@ -131,10 +130,11 @@ class Printing(Base):
 
 class BaseCard(Base):
     __tablename__ = "basecard"
+    __table_args__ = (UniqueConstraint('collector_number_str', 'edition_code', name='set_cn_uc'),)
     id = Column(Integer, primary_key=True)
     card_id = Column(Integer, ForeignKey("card.id"))
     card = relationship("Card", backref="base_cards")
-    edition_id = Column(Integer, ForeignKey("edition.id"))
+    edition_code = Column(Integer, ForeignKey("edition.code"))
     edition = relationship("Edition", backref="cards")
     arena_id = Column(Integer)
     mtgo_id = Column(Integer)
@@ -216,6 +216,14 @@ part_of = Table('part_of', Base.metadata,
         Column('card_id1', Integer, ForeignKey('card.id')),
         Column('card_id2', Integer, ForeignKey('card.id'))
 )
+
+#class Parts(Base):
+#    __tablename__ = 'part_of'
+#    card_id1 = Column(Integer, ForeignKey('card.id'), primary_key=True)
+#    card_id2 = Column(Integer, ForeignKey('card.id'), primary_key=True)
+#    card_component1 = Column(String)
+#    card_component2 = Column(String)
+    
 
 
 class Card(Base):

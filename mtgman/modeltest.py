@@ -12,13 +12,13 @@ Base = declarative_base()
 arrays = {}
 
 
-def makeArray(foreign_key, name, dict_or_type, foreign_class_f = lambda:traceback.extract_stack()[-3][2]):
+def makeArray(foreign_key, name, dict_or_type, foreign_class = None, backref_id = None):
 
     def init(self, value):
         self.value = value
 
-    backref_id = currentframe().f_back.f_code.co_names[-1] + "_id"
-    foreign_class = foreign_class_f()
+    foreign_class = currentframe().f_back.f_code.co_name if foreign_class is None else foreign_class
+    backref_id = currentframe().f_back.f_code.co_names[-1] + "_id" if backref_id is None else backref_id
     if type(dict_or_type) is dict:
         arrays[name] = type(name, (Base,), {
             "__tablename__": name,
@@ -26,6 +26,7 @@ def makeArray(foreign_key, name, dict_or_type, foreign_class_f = lambda:tracebac
             "remote_id": Column(Integer, ForeignKey(foreign_key)),
             **dict_or_type
             })
+        return relationship(name, backref="remote")
     else:
         arrays[name] = type(name, (Base,), {
             "__tablename__": name,
@@ -35,7 +36,7 @@ def makeArray(foreign_key, name, dict_or_type, foreign_class_f = lambda:tracebac
             "remote": relationship(foreign_class, backref=backref_id),
             "__init__": init
             })
-    return association_proxy(backref_id, "value")
+        return association_proxy(backref_id, "value")
         
     
 
@@ -79,3 +80,6 @@ p = Person(name = "Hans")
 #    return f
 #
 #a = printVarName()
+
+class Testblubb:
+    f = currentframe().f_code.co_name

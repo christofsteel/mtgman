@@ -97,7 +97,7 @@ class CollectionCard(Base):
 class Printing(Base):
     __tablename__ = "printing"
     id = Column(Integer, primary_key=True)
-    base_card_id = Column(Integer, ForeignKey("basecard.id"))
+    base_card_id = Column(Integer, ForeignKey("basecard.id"), nullable=False)
     base_card = relationship("BaseCard", backref="printings")
     scryfall_id = Column(UUIDType, unique=True, nullable=False)
     lang = Column(String)
@@ -132,7 +132,7 @@ class BaseCard(Base):
     __tablename__ = "basecard"
     __table_args__ = (UniqueConstraint('collector_number_str', 'edition_code', name='set_cn_uc'),)
     id = Column(Integer, primary_key=True)
-    card_id = Column(Integer, ForeignKey("card.id"))
+    card_id = Column(Integer, ForeignKey("card.id"), nullable=False)
     card = relationship("Card", backref="base_cards")
     edition_code = Column(Integer, ForeignKey("edition.code"))
     edition = relationship("Edition", backref="cards")

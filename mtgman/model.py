@@ -128,6 +128,8 @@ class Printing(Base):
 #    bcard_id = Column(Integer, ForeignKey("basecard.id"), nullable=False)
 #    bcard = relationship("BaseCard", backref="frame_effects")
 
+
+
 class BaseCard(Base):
     __tablename__ = "basecard"
     __table_args__ = (UniqueConstraint('collector_number_str', 'edition_code', name='set_cn_uc'),)
@@ -212,18 +214,11 @@ class BaseCard(Base):
 #    card_id = Column(Integer, ForeignKey("card.id"))
 #    color_of = relationship("Card", backref="color_indicator")
 
-part_of = Table('part_of', Base.metadata,
-        Column('card_id1', Integer, ForeignKey('card.id')),
-        Column('card_id2', Integer, ForeignKey('card.id'))
-)
+#part_of = Table('part_of', Base.metadata,
+#        Column('card_id1', Integer, ForeignKey('card.id')),
+#        Column('card_id2', Integer, ForeignKey('card.id'))
+#)
 
-#class Parts(Base):
-#    __tablename__ = 'part_of'
-#    card_id1 = Column(Integer, ForeignKey('card.id'), primary_key=True)
-#    card_id2 = Column(Integer, ForeignKey('card.id'), primary_key=True)
-#    card_component1 = Column(String)
-#    card_component2 = Column(String)
-    
 
 
 class Card(Base):
@@ -232,7 +227,7 @@ class Card(Base):
     oracle_id = Column(UUIDType, unique=True, nullable=False)
     prints_search_uri = Column(String, nullable=False)
     rulings_uri = Column(String, nullable=False)
-    all_parts = relationship("Card", secondary="part_of", backref=backref("part_of", remote_side=[id]), primaryjoin=id==part_of.c.card_id1, secondaryjoin=part_of.c.card_id2==id)
+    #all_parts = relationship("Card", secondary="part_of", backref=backref("part_of", remote_side=[id]), primaryjoin=id==part_of.c.card_id1, secondaryjoin=part_of.c.card_id2==id)
     #face_of_id = Column(Integer)
     #face_of = relationship("Card", backref=backref("card_faces", local_side=[face_of_id], remote_side=[id]))
     colors = makeScalar("card.id", String, name="colors")
@@ -255,6 +250,22 @@ class Card(Base):
     toughness = Column(Integer)
     toughness_str = Column(String)
     type_line = Column(String, nullable=False)
+
+class Legality(Base):
+    __tablename__ = "legality"
+    legal_id = Column(Integer, primary_key=True)
+    card_id = Column(Integer, ForeignKey("card.id"), nullable=False)
+    fmt = Column(String, nullable=False)
+    status = Column(String, nullable=False)
+    card = relationship(Card, backref="legalities")
+
+class Parts(Base):
+    __tablename__ = 'part_of'
+    card_id1 = Column(Integer, ForeignKey('card.id'), primary_key=True)
+    card_id2 = Column(Integer, ForeignKey('card.id'), primary_key=True)
+    card_component = Column(String)
+    card1 = relationship(Card, backref="all_parts", foreign_keys=card_id1)
+    card2 = relationship(Card, backref="part_of", foreign_keys=card_id2)
     
     
 #class Legality(Base):

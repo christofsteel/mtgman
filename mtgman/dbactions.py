@@ -35,7 +35,7 @@ def find_edition(json, code):
             return e
     raise RuntimeError(f"did not find {code} in {[e['code'] for e in json]}")
 
-def find_by_scryfall_id(json, id):
-    for e in json:
+def find_by_scryfall_id(all_cards, id):
+    for e in all_cards:
         if e.get("id") == id:
             return e

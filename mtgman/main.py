@@ -9,6 +9,7 @@ from .model import Card, BaseCard, Printing, Edition, Base, Block, Parts, Legali
 from .dbactions import get_scryfall_cards, get_scryfall_sets, find_edition, find_by_scryfall_id
 from uuid import UUID
 import json
+import os
 
 def addEdition(edition, json, session):
         ed = session.query(Edition).get(edition.get("code"))
@@ -77,17 +78,6 @@ def create_dict( e
 
 
 def addCard(e, all_cards, session, get_parts_stack = []): 
-    # get related cards
-    all_parts = []
-    if "all_parts" in e:
-        for part in e.get("all_parts"):
-            if part.get("id") not in get_parts_stack and part.get("id") != e.get("id"):
-                e_part = find_by_scryfall_id(all_cards, part.get("id"))
-                card_part, _ = addCard(e_part
-                        , all_cards, session
-                        , get_parts_stack=get_parts_stack + [e.get("id")])
-                part_part = Parts(card2 = card_part, card_component = part.get("component"))
-                all_parts.append(part_part)
 
     fields = ['oracle_id', "prints_search_uri" , "rulings_uri", "cmc", \
               "reserved", "type_line", "name", "layout", "mana_cost", "oracle_text", \
@@ -100,16 +90,31 @@ def addCard(e, all_cards, session, get_parts_stack = []):
               }
     custom = {"legalities": \
             [Legality(fmt=fmt,status=status) \
-            for fmt, status in e.get("legalities").items()],
-            "all_parts": all_parts
+            for fmt, status in e.get("legalities").items()]
             }
     ignore = ["legalities", "all_parts"]
+    card = session.query(Card).filter(Card.oracle_id == e.get("oracle_id")).first()
     dict_all, list_all = create_dict(e, fields=fields, fields_int=fields_int
             ,lists=lists, renames=renames, custom=custom, ignore=ignore)
 
-    card = session.query(Card).filter(Card.oracle_id == e.get("oracle_id")).first()
     if card is None:
         card = Card(**dict_all)
+        session.add(card)
+        # get related cards
+        all_parts = []
+        if "all_parts" in e:
+            for part in e.get("all_parts"):
+                if part.get("id") not in get_parts_stack and part.get("id") != e.get("id"):
+                    e_part = find_by_scryfall_id(all_cards, part.get("id"))
+                    card_part, _ = addCard(e_part
+                            , all_cards, session
+                            , get_parts_stack=get_parts_stack + [e.get("id")])
+                    session.add(card_part)
+                    part_part = Parts(card1 = card, card2 = card_part, card_component = part.get("component"))
+                    all_parts.append(part_part)
+        print(f"New card {card.name}")
+    else:
+        print(f"Found card {card.name}")
     return card, list_all 
 
 def addBaseCard(e, all_cards, session):
@@ -140,6 +145,7 @@ def addBaseCard(e, all_cards, session):
             .filter(BaseCard.edition_code == e.get("set")).first()
     if base_card is None:
         base_card = BaseCard(**dict_all)
+        session.add(base_card)
     return (base_card, gotten + list_all) 
 
 
@@ -175,28 +181,36 @@ def main():
     Base.metadata.create_all(engine)
     session = Session()
 
-    editions = get_scryfall_sets()
+    
+    if not os.path.isfile("./sets.json"):
+        get_scryfall_sets()
+
+    with open("sets.json") as f:
+        editions = json.load(f) 
+
 
     for idx, edition in enumerate(editions):
         print(f"({idx + 1}/{len(editions)}) {edition['name']}")
         addEdition(edition, editions, session)
     session.commit()
 
-    #cards_online = get_scryfall_cards()
-    #with open("cards.json", "w") as f:
-    #    json.dump(cards_online, f)
+    cards_online = get_scryfall_cards()
+    return
+    with open("cards.json", "w") as f:
+        json.dump(cards_online, f)
 
     with open("cards.json", "r") as f:
         all_cards = json.load(f)
 
-    for idx, e in enumerate(all_cards[2100:2200]):
+    for idx, e in enumerate(all_cards):
         got = ["object", "card_faces", "set", "set_name", "set_type", "set_uri", "set_search_uri", "scryfall_set_uri", "related_uris"]
         printing, gotten = addPrinting(e, all_cards, session)        
         got += gotten
         session.add(printing)
+
+        # sanity checks
         t = True
         if e.get("all_parts") is not None: 
-            t = t and e.get("all_parts")[0]["name"] == e.get("name")
             for obj in e.get("all_parts"):
                 t = t and (obj.get("object") == "related_card")
 
@@ -205,6 +219,7 @@ def main():
         else:
             print(e.get("name"))
             print(e.get("all_parts"))
+            breakpoint()
         print(f"({idx + 1}/{len(all_cards)}) {printing.base_card.card.name}, {printing.base_card.edition.code}, {printing.base_card.collector_number}, {printing.lang}")        
 
         missing = [k for k in e.keys() if k not in got]

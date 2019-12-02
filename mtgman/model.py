@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, ForeignKey, Boolean, Date, Table, Float
+from sqlalchemy import Column, String, Integer, ForeignKey, Boolean, Date, Table, Float, Numeric
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.schema import UniqueConstraint
 from sqlalchemy_utils import UUIDType
@@ -161,10 +161,10 @@ class BaseCard(Base):
     games = makeScalar("basecard.id", String, name="games")
     highres_image = Column(Boolean, nullable=False)
     illustration_id = Column(UUIDType)
-    price_usd = Column(Integer)
-    price_usd_foil = Column(Integer)
-    price_eur = Column(Integer)
-    price_tix = Column(Integer)
+    price_usd = Column(Float)
+    price_usd_foil = Column(Float)
+    price_eur = Column(Float)
+    price_tix = Column(Float)
     promo = Column(Boolean, nullable=False)
     promo_types = makeScalar("basecard.id", String, name="promo_type")
     #purchase_uris
@@ -220,7 +220,6 @@ class BaseCard(Base):
 #)
 
 
-
 class Card(Base):
     __tablename__ = "card"
     id = Column(Integer, primary_key=True)
@@ -250,6 +249,67 @@ class Card(Base):
     toughness = Column(Integer)
     toughness_str = Column(String)
     type_line = Column(String, nullable=False)
+
+class CardFacePrinting(Base):
+    __tablename__ = "card_face_printing"
+    __table_args__ = (UniqueConstraint('card_face_base_id', 'card_printing_id', name='face_for_printing_uc'),)
+
+    id = Column(Integer, primary_key=True)
+    card_face_base_id = Column(Integer, ForeignKey("card_face_base.id"), nullable=False)
+    card_face_base = relationship("CardFaceBase", backref="card_face_printings")
+    card_printing_id = Column(Integer, ForeignKey("printing.id"), nullable=False)
+    card_printing = relationship("Printing", backref="faces")
+
+    image_uri_png = Column(String)
+    image_uri_border_crop = Column(String)
+    image_uri_art_crop = Column(String)
+    image_uri_large = Column(String)
+    image_uri_normal = Column(String)
+    image_uri_small = Column(String)
+    printed_name = Column(String)
+    printed_text = Column(String)
+    printed_type_line = Column(String)
+
+
+class CardFaceBase(Base):
+    __tablename__ = "card_face_base"    
+    __table_args__ = (UniqueConstraint('card_face_id', 'basecard_id', name='face_for_base_uc'),)
+     
+    id = Column(Integer, primary_key=True)
+    card_face_id = Column(Integer, ForeignKey("card_face.id"))
+    card_face = relationship("CardFace", backref="card_face_bases")
+    basecard_id = Column(Integer, ForeignKey("basecard.id"))
+    basecard = relationship("BaseCard", backref="faces")
+
+    artist = Column(String)
+    artist_id = Column(UUIDType)
+    illustration_id = Column(UUIDType)
+    flavor_text = Column(String)
+    watermark = Column(String)
+
+class CardFace(Base):
+    __tablename__ = "card_face"
+
+    id = Column(Integer, primary_key=True)
+    card_id = Column(Integer, ForeignKey("card.id"))
+    card = relationship("Card", backref="faces")
+
+    name = Column(String, nullable=False, unique=True)
+    mana_cost = Column(String, nullable=False)
+    type_line = Column(String, nullable=False)
+    oracle_text = Column(String, nullable=False)
+    power = Column(Integer)
+    power_str = Column(String)
+    toughness = Column(Integer)
+    toughness_str = Column(String)
+    color_indicator = makeScalar("card_face.id", String, name="color_indicator_face")
+    colors = makeScalar("card_face.id", String, name="colors_face")
+    loyalty = Column(Integer)
+    loyalty_str = Column(String)
+    type_line = Column(String)
+
+    
+
 
 class Legality(Base):
     __tablename__ = "legality"

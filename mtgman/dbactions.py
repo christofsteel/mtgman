@@ -55,21 +55,21 @@ def find_edition(json, code):
     raise RuntimeError(f"did not find {code} in {[e['code'] for e in json]}")
 
 def find_by_scryfall_id(all_cards, id):
-    for e in all_cards:
-        if e.get("id") == id:
-            return e
+    card = all_cards.get(id)
+    if card is not None:
+        return card
     print(f"Failed to find card: {id}, try online.")
     return scrython.cards.Id(id = id).scryfallJson
 
 def find_first_by_name(all_cards, name):
-    for e in all_cards:
+    for e in all_cards.values():
         if e.get("name") == name:
             return e
     raise RuntimeError(f"did not find card: {id}")
 
 def find_all_by_name(all_cards, name):
     l = []
-    for e in all_cards:
+    for e in all_cards.values():
         if e.get("name") == name:
             l.append(e)
     return l

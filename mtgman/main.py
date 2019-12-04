@@ -11,6 +11,7 @@ from .dbactions import get_scryfall_cards, get_scryfall_sets, find_edition, find
 from uuid import UUID
 import json
 import os
+from tqdm import tqdm
 
 def addEdition(edition, json, session):
         ed = session.query(Edition).get(edition.get("code"))
@@ -47,6 +48,9 @@ def addEdition(edition, json, session):
         session.add(db_edition)
         return db_edition
 
+def is_simpl_digit(i):
+    i in "0123456789"
+
 def create_dict( e
                , fields = [] 
                , fields_int = []
@@ -60,7 +64,7 @@ def create_dict( e
                , custom = {}
                , ignore = []):
     dict_fields = {f:e.get(f) for f in fields}
-    dict_fields_int = {f:(int("".join(filter(lambda x:x.isdigit(),e.get(f)))) if "".join(filter(lambda x:x.isdigit(),e.get(f))).isdigit() else 0) for f in fields_int if e.get(f) is not None}
+    dict_fields_int = {f:(int("".join(filter(is_simpl_digit,e.get(f)))) if "".join(filter(is_simpl_digit,e.get(f))).isdigit() else 0) for f in fields_int if e.get(f) is not None}
     dict_fields_date = {f:(datetime.datetime.strptime(e.get(f), "%Y-%m-%d") if e.get(f) is not None else None) for f in fields_date}
     dict_fields_uuid = {f:(UUID(e.get(f)) if e.get(f) is not None else None) for f in fields_uuid}
     dict_lists = {f:(e.get(f) if e.get(f) is not None else []) for f in lists}
@@ -90,37 +94,47 @@ def makeCardFacePrinting(e, card_base_face, printing, session):
     custom = {"card_face_base": card_base_face, "card_printing": printing}
 
     dict_all, list_all = create_dict(e, fields=fields, objects=objects, custom=custom)
+    card_face_printing = session.query(CardFacePrinting)\
+        .filter(CardFacePrinting.card_face_base == card_base_face)\
+        .filter(CardFacePrinting.card_printing == printing).first()
 
-    card_face_printing = CardFacePrinting(**dict_all)
-    session.add(card_face_printing)
+    if card_face_printing is None:
+        card_face_printing = CardFacePrinting(**dict_all)
+        session.add(card_face_printing)
 
     return list_all
 
-def makeCardBaseFace(e, card_face, basecard, session):
+def makeCardBaseFace(face, card_face, basecard, session):
     fields = ["artist", "flavor_text", "watermark"]
     fields_uuid = ["artist_id", "illustration_id"]
     custom = {"card_face" : card_face, "basecard": basecard}
 
-    dict_all, list_all = create_dict(e, fields=fields, fields_uuid=fields_uuid, custom = custom)
+    dict_all, list_all = create_dict(face, fields=fields, fields_uuid=fields_uuid, custom = custom)
 
-    card_base_face = CardFaceBase(**dict_all)
-    session.add(card_base_face)
+    card_base_face = session.query(CardFaceBase)\
+            .filter(CardFaceBase.card_face == card_face)\
+            .filter(CardFaceBase.basecard == basecard).first()
+
+    if card_base_face is None:
+        card_base_face = CardFaceBase(**dict_all)
+        session.add(card_base_face)
 
     return card_base_face, list_all
 
-def makeCardFace(e, card, session):
+def makeCardFace(face, card, session):
     fields = ["name", "mana_cost", "type_line", "oracle_text"]
     fields_int = ["power", "toughness"]
     lists=["colors", "color_indicator"]
     fields_uuid = []
     renames = {"power": "power_str", "toughness": "toughness_str"}
     custom = {"card": card}
-    dict_all, list_all = create_dict(e, fields=fields, lists=lists, fields_int=fields_int, fields_uuid=fields_uuid, renames=renames, custom=custom)
+    dict_all, list_all = create_dict(face, fields=fields, lists=lists, fields_int=fields_int, fields_uuid=fields_uuid, renames=renames, custom=custom)
 
-    #card_face = session.query(CardFace).filter(CardFace.name == e.get("name")).first() 
+    card_face = session.query(CardFace).filter(CardFace.name == face["name"]).first()
 
-    card_face = CardFace(**dict_all)
-    session.add(card_face)
+    if card_face is None:
+        card_face = CardFace(**dict_all)
+        session.add(card_face)
 
     return card_face, list_all
     
@@ -149,20 +163,19 @@ def addCard(e, all_cards, session, get_parts_stack = []):
         card = Card(**dict_all)
         session.add(card)
         # get related cards
-        all_parts = []
-        if "all_parts" in e:
-            for part in e.get("all_parts"):
-                if part.get("id") not in get_parts_stack and part.get("id") != e.get("id"):
-                    e_part = find_by_scryfall_id(all_cards, part.get("id"))
-                    card_part, _ = addCard(e_part
-                            , all_cards, session
-                            , get_parts_stack=get_parts_stack + [e.get("id")])
-                    session.add(card_part)
-                    part_part = Parts(card1 = card, card2 = card_part, card_component = part.get("component"))
-                    all_parts.append(part_part)
-        print(f"New card {card.name}")
-    else:
-        print(f"Found card {card.name}")
+        # these change to often and can lead to inconsitent states when updating
+        #all_parts = []
+        #if "all_parts" in e:
+        #    for part in e.get("all_parts"):
+        #        if part.get("id") not in get_parts_stack and part.get("id") != e.get("id"):
+        #            e_part = find_by_scryfall_id(all_cards, part.get("id"))
+        #            card_part, _ = addCard(e_part
+        #                    , all_cards, session
+        #                    , get_parts_stack=get_parts_stack + [e.get("id")])
+        #            session.add(card_part)
+        #            part_part = Parts(card1 = card, card2 = card_part, card_component = part.get("component"))
+        #            all_parts.append(part_part)
+        #print(f"New card {card.name}")
     return card, list_all 
     #builder = CardBuilder(e, session, all_cards)
     #card, lists = builder.create_object(), builder.get_list()
@@ -262,31 +275,10 @@ def fillCardFaces(e, printing, session):
     gotten3 = []
     if "card_faces" in e.keys():
         for face in e["card_faces"]:
-            dirty = False
-
-            card_face = session.query(CardFace).filter(CardFace.name == face["name"]).first()
-            # We can assume, that if the card_face is new, every other is new
-            if card_face is None:
-                dirty = True
-                card_face, gotten = makeCardFace(face, printing.base_card.card, session)
-
-            if not dirty:
-                card_base_face = session.query(CardFaceBase)\
-                        .filter(CardFaceBase.card_face == card_face)\
-                        .filter(CardFaceBase.basecard == printing.base_card).first()
-                if card_base_face is None:
-                    dirty = True
-            if dirty:
-                card_base_face, gotten2 = makeCardBaseFace(face, card_face, printing.base_card, session)
-
-            if not dirty:
-                card_face_printing = session.query(CardFacePrinting)\
-                    .filter(CardFacePrinting.card_face_base == card_base_face)\
-                    .filter(CardFacePrinting.card_printing == printing).first()
-                if card_face_printing is None:
-                    dirty = True
-            if dirty:
-                gotten3 = makeCardFacePrinting(face, card_base_face, printing, session)
+            card_face, gotten = makeCardFace(face, printing.base_card.card, session)
+            card_base_face, gotten2 = makeCardBaseFace(face, card_face, printing.base_card, session)
+            gotten3 = makeCardFacePrinting(face, card_base_face, printing, session)
+            session.commit()
 
     return gotten + gotten2 + gotten3
 
@@ -311,8 +303,8 @@ def main():
         editions = json.load(f) 
 
 
-    for idx, edition in enumerate(editions):
-        print(f"({idx + 1}/{len(editions)}) {edition['name']}")
+    for edition in tqdm(editions):
+        # print(f"({idx + 1}/{len(editions)}) {edition['name']}")
         addEdition(edition, editions, session)
     session.commit()
 
@@ -322,11 +314,12 @@ def main():
     #    json.dump(cards_online, f)
 
     print("loading cards")
+    #with open("cards_1993_11600.json", "r") as f:
     with open("cards.json", "r") as f:
         all_cards = json.load(f)
     print("finished loading")
 
-    for idx, e in enumerate(list(all_cards.values())[1993:11600]):
+    for e in tqdm(list(all_cards.values())[194576:]):
         got = ["object", "card_faces", "set", "set_name", "set_type", "set_uri", "set_search_uri", "scryfall_set_uri", "related_uris"]
         got_card_faces = ["object"]
 
@@ -337,27 +330,27 @@ def main():
         session.add(printing)
 
         # sanity checks
-        t = True
-        if e.get("all_parts") is not None: 
-            for obj in e.get("all_parts"):
-                t = t and (obj.get("object") == "related_card")
-        print(f"({idx + 1}/{len(all_cards)}) {printing.base_card.card.name}, {printing.base_card.edition.code}, {printing.base_card.collector_number}, {printing.lang}")        
+        #t = True
+        #if e.get("all_parts") is not None: 
+        #    for obj in e.get("all_parts"):
+        #        t = t and (obj.get("object") == "related_card")
+        #print(f"({idx + 1}/{len(all_cards)}) {printing.base_card.card.name}, {printing.base_card.edition.code}, {printing.base_card.collector_number}, {printing.lang}")        
 
-        missing = [k for k in e.keys() if k not in got]
-        if missing != []:
-            print("missing fields: {}".format(missing))            
-            for k in missing:
-                print(f"{k} : {e[k]}")
-            return
+        #missing = [k for k in e.keys() if k not in got]
+        #if missing != []:
+        #    print("missing fields: {}".format(missing))            
+        #    for k in missing:
+        #        print(f"{k} : {e[k]}")
+        #    return
 
-        if e.get("card_faces") is not None:
-            for cf in e.get("card_faces"):
-                missing_cf = [k for k in cf.keys() if k not in got_card_faces]
-                if missing_cf != []:
-                    print("missing fields: {}".format(missing_cf))            
-                    for k in missing_cf:
-                        print(f"{k} : {cf[k]}")
-                    return
+        #if e.get("card_faces") is not None:
+        #    for cf in e.get("card_faces"):
+        #        missing_cf = [k for k in cf.keys() if k not in got_card_faces]
+        #        if missing_cf != []:
+        #            print("missing fields: {}".format(missing_cf))            
+        #            for k in missing_cf:
+        #                print(f"{k} : {cf[k]}")
+        #            return
     session.commit()
         #print(json.dumps(e, indent=2, sort_keys = True))
 

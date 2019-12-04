@@ -17,55 +17,16 @@ def import_sets(session):
 
 
     for edition in tqdm(editions):
-        # print(f"({idx + 1}/{len(editions)}) {edition['name']}")
         addEdition(edition, editions, session)
     session.commit()
 
-def import_cards(session, sanity_check=False):
-    #cards_online = get_scryfall_cards()
-    #return
-    #with open("cards.json", "w") as f:
-    #    json.dump(cards_online, f)
+def import_cards(query, session):
+    cards = get_scryfall_cards(query)
 
-    print("loading cards")
-    #with open("cards_1993_11600.json", "r") as f:
-    with open("cards.json", "r") as f:
-        all_cards = json.load(f)
-    print("finished loading")
-
-    for e in tqdm(list(all_cards.values())):
-        if sanity_check:
-            got = ["object", "card_faces", "set", "set_name", "set_type", "set_uri", "set_search_uri", "scryfall_set_uri", "related_uris"]
-            got_card_faces = ["object"]
-
-        printing, gotten = addPrinting(e, all_cards, session)        
+    for e in tqdm(cards):
+        printing, gotten = addPrinting(e, session)        
         gotten_card_faces = fillCardFaces(e, printing, session)
         session.add(printing)
-        if sanity_check:
-            got += gotten
-            got_card_faces += gotten_card_faces
-
-            #t = True
-            #if e.get("all_parts") is not None: 
-            #    for obj in e.get("all_parts"):
-            #        t = t and (obj.get("object") == "related_card")
-            #print(f"({idx + 1}/{len(all_cards)}) {printing.base_card.card.name}, {printing.base_card.edition.code}, {printing.base_card.collector_number}, {printing.lang}")        
-
-            missing = [k for k in e.keys() if k not in got]
-            if missing != []:
-                print("missing fields: {}".format(missing))            
-                for k in missing:
-                    print(f"{k} : {e[k]}")
-                return
-
-            if e.get("card_faces") is not None:
-                for cf in e.get("card_faces"):
-                    missing_cf = [k for k in cf.keys() if k not in got_card_faces]
-                    if missing_cf != []:
-                        print("missing fields: {}".format(missing_cf))            
-                        for k in missing_cf:
-                            print(f"{k} : {cf[k]}")
-                        return
     session.commit()
 
 
@@ -196,7 +157,7 @@ def makeCardFace(face, card, session):
     
 
 
-def addCard(e, all_cards, session, get_parts_stack = []): 
+def addCard(e, session, get_parts_stack = []): 
     fields = ['oracle_id', "prints_search_uri" , "rulings_uri", "cmc", \
               "reserved", "type_line", "name", "layout", "mana_cost", "oracle_text", \
               "edhrec_rank", "life_modifier", "hand_modifier"]
@@ -239,8 +200,8 @@ def addCard(e, all_cards, session, get_parts_stack = []):
     #session.commit()
     #return card, lists
 
-def addBaseCard(e, all_cards, session):
-    card, gotten = addCard(e, all_cards, session)
+def addBaseCard(e, session):
+    card, gotten = addCard(e, session)
 
     edition = session.query(Edition).filter(Edition.code == e.get("set")).one()
 
@@ -300,8 +261,8 @@ def addBaseCard(e, all_cards, session):
     return (base_card, gotten + list_all) 
 
 
-def addPrinting(e, all_cards, session):
-    base_card, gotten = addBaseCard(e, all_cards, session)
+def addPrinting(e, session):
+    base_card, gotten = addBaseCard(e, session)
 
     fields = [ "lang", "scryfall_uri", "uri", "printed_name", "printed_text"
             , "printed_type_line"]

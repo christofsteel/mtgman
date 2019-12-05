@@ -11,7 +11,7 @@ from .model import Card
 def complete_scrython_data(scrython_object):
     data = scrython_object.scryfallJson["data"]
 
-    if scrython_object.scryfallJson["total_cards"] > 2000:
+    if "total_cards" in scrython_object.scryfallJson and scrython_object.scryfallJson["total_cards"] > 2000:
         yn = input(f"Your query has {scrython_object.scryfallJson['total_cards']} results. Are you sure you want to continue [y/N]? ")
         if yn.lower() != 'y':
             return []
@@ -35,25 +35,10 @@ def complete_scrython_data(scrython_object):
     return data
 
 def get_scryfall_cards(query):
-    return complete_scrython_data(scrython.Search(q=query))
-
-def get_scryfall_cards2():
-    url = scrython.BulkData().bulk_permalink_uri(3)
-    response = requests.get(url)
-    total_size = int(response.headers.get("content-length", 0))
-    chunk_size = 1024
-    buf = BytesIO()
-    print(f"total size: {total_size}")
-    bar = tqdm(total = total_size, unit='B', unit_scale=True, desc="Ihre Werbung")
-    for chunk in response.iter_content(chunk_size=chunk_size):
-        buf.write(chunk)
-        bar.update(1024)
-    buf.seek(0)
-    cards = json.load(buf)
-    return cards
+    return complete_scrython_data(scrython.Search(q=query, unique="prints", include_extras=True, include_multilingual=True))
 
 def get_scryfall_sets():
-    raise NotImplementedError #complete_scrython_data(scrython.foundation.FoundationObject("sets?"), "sets.json")
+    return complete_scrython_data(scrython.foundation.FoundationObject("sets?"))
 
 def find_edition(json, code):
     for e in json:

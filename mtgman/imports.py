@@ -9,12 +9,7 @@ from .model import Card, BaseCard, Printing, Edition, Base, Block, Parts, Legali
 from .dbactions import get_scryfall_cards, get_scryfall_sets, find_edition, find_by_scryfall_id
 
 def import_sets(session):
-    if not os.path.isfile("./sets.json"):
-        get_scryfall_sets()
-
-    with open("sets.json") as f:
-        editions = json.load(f) 
-
+    editions = get_scryfall_sets()
 
     for edition in tqdm(editions):
         addEdition(edition, editions, session)

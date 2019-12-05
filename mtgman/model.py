@@ -73,25 +73,22 @@ class Edition(Base):
 class Collection(Base):
     __tablename__ = "collection"
     id = Column(Integer, primary_key=True)
-    name = Column(Integer)
+    name = Column(Integer, unique=True)
     parent_id = Column(Integer, ForeignKey("collection.id"))
     child = relationship("Collection", backref=backref("parent", remote_side=[id]))
 
 
 
-class collected(Base):
-    __tablename__ = "collected"
-    id = Column(Integer, primary_key=True)
-    collection_id = Column(Integer, ForeignKey("collection.id"))
-    ccard_id = Column(Integer, ForeignKey("collectioncard.id"))
-    count = Column(Integer)
-    
-
 class CollectionCard(Base):
     __tablename__ = "collectioncard"
     id = Column(Integer, primary_key=True)
+    collection_id = Column(Integer, ForeignKey("collection.id"))
+    collection = relationship(Collection, backref="cards")
     printing_id = Column(Integer, ForeignKey("printing.id"))
+    printing = relationship("Printing", backref="owned")
     foil = Column(Boolean, nullable=False)
+    state = Column(String, nullable=False)
+    count = Column(Integer)
 
 
 class Printing(Base):

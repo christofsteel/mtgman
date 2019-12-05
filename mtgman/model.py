@@ -73,7 +73,7 @@ class Edition(Base):
 class Collection(Base):
     __tablename__ = "collection"
     id = Column(Integer, primary_key=True)
-    name = Column(Integer, unique=True)
+    name = Column(Integer, unique=True, nullable=False)
     parent_id = Column(Integer, ForeignKey("collection.id"))
     child = relationship("Collection", backref=backref("parent", remote_side=[id]))
 
@@ -82,22 +82,23 @@ class Collection(Base):
 class CollectionCard(Base):
     __tablename__ = "collectioncard"
     id = Column(Integer, primary_key=True)
-    collection_id = Column(Integer, ForeignKey("collection.id"))
+    collection_id = Column(Integer, ForeignKey("collection.id"), nullable=False)
     collection = relationship(Collection, backref="cards")
-    printing_id = Column(Integer, ForeignKey("printing.id"))
+    printing_id = Column(Integer, ForeignKey("printing.id"), nullable=False)
     printing = relationship("Printing", backref="owned")
     foil = Column(Boolean, nullable=False)
-    state = Column(String, nullable=False)
-    count = Column(Integer)
+    condition = Column(String, nullable=False)
+    count = Column(Integer, nullable=False)
 
 
 class Printing(Base):
     __tablename__ = "printing"
+    __table_args__ = (UniqueConstraint('base_card_id', 'lang', name='card_lang_uc'),)
     id = Column(Integer, primary_key=True)
     base_card_id = Column(Integer, ForeignKey("basecard.id"), nullable=False)
     base_card = relationship("BaseCard", backref="printings")
     scryfall_id = Column(UUIDType, unique=True, nullable=False)
-    lang = Column(String)
+    lang = Column(String, nullable=False)
     scryfall_uri = Column(String, nullable=False)
     uri = Column(String, nullable=False)
     image_uri_png = Column(String)

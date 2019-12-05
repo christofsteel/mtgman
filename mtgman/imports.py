@@ -1,6 +1,7 @@
 import os
 import json
 import datetime
+import scrython
 from uuid import UUID
 
 from tqdm import tqdm
@@ -8,11 +9,13 @@ from tqdm import tqdm
 from .model import Card, BaseCard, Printing, Edition, Base, Block, Parts, Legality, CardFace, CardFaceBase, CardFacePrinting
 from .dbactions import get_scryfall_cards, get_scryfall_sets, find_edition, find_by_scryfall_id
 
+from sqlalchemy.orm.exc import NoResultFound
+
 def import_sets(session):
     editions = get_scryfall_sets()
 
     for edition in tqdm(editions):
-        addEdition(edition, editions, session)
+        addEdition(edition, session)
     session.commit()
 
 def import_cards(query, session):
@@ -24,8 +27,25 @@ def import_cards(query, session):
         session.add(printing)
     session.commit()
 
+def get_edition(code, session):
+    sj = scrython.foundation.FoundationObject(f"sets/{code}?").scryfallJson
+    edition = addEdition(sj, session)
+    session.commit()
+    return edition
 
-def addEdition(edition, json, session):
+def get_base_card(edition, cn, session):
+    sj = scrython.cards.collector.Collector(code=edition.code,collector_number=cn).scryfallJson
+    basecard, _ = addBaseCard(sj, session)
+    session.commit()
+    return basecard
+
+def get_printing(code, cn, lang, session):
+    printing =addPrinting(code, cn, lang, session)
+    session.commit()
+    return printing
+
+
+def addEdition(edition, session):
         ed = session.query(Edition).get(edition.get("code"))
         if ed is not None:
             return ed
@@ -53,10 +73,8 @@ def addEdition(edition, json, session):
         if edition.get("parent_set_code") is not None:
             par_ed = session.query(Edition).get(edition.get("parent_set_code"))
             if par_ed is None:
-                parent = find_edition(json, edition.get("parent_set_code"))
-                par_ed = addEdition(parent, json,session)
-                session.add(par_ed)
-            db_edition.parent_edition = par_ed
+                parent = get_edition(edition.get("parent_set_code"), session)
+            db_edition.parent_edition = parent
         session.add(db_edition)
         return db_edition
 
@@ -198,7 +216,10 @@ def addCard(e, session, get_parts_stack = []):
 def addBaseCard(e, session):
     card, gotten = addCard(e, session)
 
-    edition = session.query(Edition).filter(Edition.code == e.get("set")).one()
+    try:
+        edition = session.query(Edition).filter(Edition.code == e.get("set")).one()
+    except NoResultFound:
+        edition = get_edition(e.get("set"), session)
 
     #builder = BaseCardBuilder(e, session) 
     #base_card = builder.create_object()
@@ -256,7 +277,15 @@ def addBaseCard(e, session):
     return (base_card, gotten + list_all) 
 
 
-def addPrinting(e, session):
+def addPrinting(code, cn, lang, session):
+    printing = session.query(Printing).join(BaseCard, aliased=True).join(Edition, aliased=True)\
+            .filter(BaseCard.collector_number_str == cn)\
+            .filter(Edition.code == code)\
+            .filter(Printing.lang == lang).first()
+    if printing is not None:
+        return printing
+    e = scrython.cards.collector.Collector(code=code,collector_number=cn, lang=lang).scryfallJson
+
     base_card, gotten = addBaseCard(e, session)
 
     fields = [ "lang", "scryfall_uri", "uri", "printed_name", "printed_text"
@@ -279,7 +308,7 @@ def addPrinting(e, session):
     printing = session.query(Printing).filter(Printing.scryfall_id==UUID(e.get("id"))).first()
     if printing is None:
         printing = Printing(**dict_all)
-    return (printing, gotten + list_all) 
+    return (printing) #, gotten + list_all) 
 
 def fillCardFaces(e, printing, session):
     gotten = []

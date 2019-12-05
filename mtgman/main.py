@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 from .imports import import_sets, import_cards
 from .dbactions import dbquery
-from .collections import add_collection, list_collections
+from .collections import add_collection, list_collections, import_cards
 from .model import Base
 import json
 import os
@@ -36,8 +36,15 @@ def main():
     newcol.add_argument("--parent", "-p")
     editcol = colcommands.add_parser("edit", aliases=["e"])
     editcol.add_argument("name")
-    editcol.add_argument("--query", '-q')
+    editcol.add_argument("--query", '-q')    
     listcol = colcommands.add_parser("list", aliases=["l"])
+    importcol = colcommands.add_parser("import", aliases=["i"])
+    importcol.add_argument("name")
+    importcol.add_argument("file")
+    importcol.add_argument("--auto-add", '-a', action="store_true")
+    importcol.add_argument("--edition", '-e')
+    importcol.add_argument("--language", '-l')
+    importcol.add_argument("--foil", '-f', action="store_true")
 
     # --add
     # --import file.cvs
@@ -56,6 +63,10 @@ def main():
             add_collection(args.name, args.parent, session)
         elif args.colcommand == "list" or args.colcommand == "l":
             list_collections(session)
+        elif args.colcommand == "edit" or args.colcommand == "e":
+            pass
+        elif args.colcommand == "import" or args.colcommand == "i":
+            import_cards(name = args.name, filename=args.file, session=session)
 
 
 

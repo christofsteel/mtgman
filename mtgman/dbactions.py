@@ -34,6 +34,8 @@ def complete_scrython_data(scrython_object):
 
     return data
 
+
+
 def get_scryfall_cards(query):
     return complete_scrython_data(scrython.Search(q=query, unique="prints", include_extras=True, include_multilingual=True))
 

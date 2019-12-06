@@ -1,7 +1,7 @@
 from . import create_dict
 from .scryfall import get_scryfall_printing
 from .faces import fillCardFaces
-from .basecard import get_base_card
+from .basecard import get_base_card, get_base_card_from_sf
 from .edition import get_edition
 from ..model import Printing, BaseCard, Edition
 
@@ -49,7 +49,7 @@ def create_printing(element, base_card, edition):
 
 def add_printing(e, session):
     edition = get_edition(e.get("set"), session)
-    base_card = get_base_card(e.get("set"), e.get("collector_number"), session)
+    base_card = get_base_card_from_sf(e, session)
 
     printing = create_printing(e, base_card, edition)
     fillCardFaces(e, printing, session)

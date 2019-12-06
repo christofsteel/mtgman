@@ -15,14 +15,29 @@ from ..model import Card, Legality
 #        session.add(printing)
 #    session.commit()
 
-def get_card(name, session):
-    try:
-        return session.query(Card).filter(Card.name == name).one()
-    except NoResultFound:
-        e = get_scryfall_card(name)
-        card = add_card(e, session)
-        session.commit()
+def get_db_card(name, session):
+    return session.query(Card).filter(Card.name == name).first()
+
+def get_db_card_from_sf(e, session):
+    return get_db_card(e["name"], session)
+
+def get_card_from_sf(e, session):
+    card = get_db_card_from_sf(e, session)
+    if card is not None:
         return card
+    card = add_card(e, session)
+    session.commit()
+    return card
+
+def get_card(name, session):
+    card = get_db_card(name, session)
+    if card is not None:
+        return card
+
+    e = get_scryfall_card(name)
+    card = add_card(e, session)
+    session.commit()
+    return card
 
 
 def create_card(element):

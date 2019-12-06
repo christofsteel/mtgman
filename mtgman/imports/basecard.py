@@ -3,12 +3,26 @@ from datetime import datetime
 from . import create_dict
 from .scryfall import get_scryfall_base_card
 from .edition import get_edition
-from .card import get_card
+from .card import get_card, get_card_from_sf
 from ..model import BaseCard
 
-def get_base_card(code, cn, session):
-    base_card = session.query(BaseCard).filter(BaseCard.collector_number_str == cn)\
+def get_db_base_card(code, cn, session):
+    return session.query(BaseCard).filter(BaseCard.collector_number_str == cn)\
             .filter(BaseCard.edition_code == code).first()
+
+def get_db_base_card_from_sf(e, session):
+    return get_db_base_card(e["set"], e["collector_number"], session)
+
+def get_base_card_from_sf(e, session):
+    base_card = get_base_card_from_sf(e, session)
+    if base_card is not None:
+        return base_card
+    base_card = add_base_card(e, session)
+    session.commit()
+    return base_card
+
+def get_base_card(code, cn, session):
+    base_card = get_db_base_card(code, cn, session)
 
     if base_card is not None:
         return base_card
@@ -70,7 +84,7 @@ def create_base_card(element, card, edition):
 
 def add_base_card(e, session):
     edition = get_edition(e.get("set"), session)
-    card = get_card(e.get("name"), session)
+    card = get_card_from_sf(e, session)
 
     base_card = create_base_card(e, card, edition) 
     session.add(base_card)

@@ -1,10 +1,12 @@
-import scrython
-
 from . import create_dict
+from .scryfall import get_scryfall_printing
 from .faces import fillCardFaces
 from .basecard import get_base_card
 from .edition import get_edition
 from ..model import Printing, BaseCard, Edition
+
+def get_db_printing(base_card, lang, session):
+    return session.query(Printing).filter(Printing.base_card == base_card).filter(Printing.lang == lang)
 
 def get_printing(code, cn, lang, session):
     printing = session.query(Printing).join(BaseCard, aliased=True).join(Edition, aliased=True)\
@@ -15,8 +17,7 @@ def get_printing(code, cn, lang, session):
     if printing is not None:
         return printing
 
-    e = scrython.cards.collector.Collector(code=code,collector_number=cn, lang=lang).scryfallJson
-
+    e = get_scryfall_printing(code, cn, lang) 
     printing = add_printing(e, session)
     
     session.commit()

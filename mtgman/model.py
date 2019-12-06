@@ -239,7 +239,7 @@ class Card(Base):
     loyalty = Column(Integer)
     loyalty_str = Column(String)
     mana_cost = Column(String)
-    name = Column(String)
+    name = Column(String, unique=True, nullable=False)
     oracle_text = Column(String)
     power = Column(Integer)
     power_str = Column(String)

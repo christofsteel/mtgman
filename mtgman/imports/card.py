@@ -1,5 +1,7 @@
+from sqlalchemy.orm.exc import NoResultFound
 
 from . import create_dict
+from .scryfall import get_scryfall_card
 from ..model import Card, Legality
 
 #def import_cards(query, session):
@@ -12,6 +14,15 @@ from ..model import Card, Legality
 #        gotten_card_faces = fillCardFaces(e, printing, session)
 #        session.add(printing)
 #    session.commit()
+
+def get_card(name, session):
+    try:
+        return session.query(Card).filter(Card.name == name).one()
+    except NoResultFound:
+        e = get_scryfall_card(name)
+        card = add_card(e, session)
+        session.commit()
+        return card
 
 
 def create_card(element):
@@ -36,12 +47,7 @@ def create_card(element):
     return Card(**dict_all)
 
 
-def addCard(e, session):
-    card = session.query(Card).filter(Card.oracle_id == e.get("oracle_id")).first()
-
-    if card is not None:
-        return card
-
+def add_card(e, session):
     card = create_card(e)
     session.add(card)
     return card

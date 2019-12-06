@@ -1,32 +1,14 @@
-import scrython
-from tqdm import tqdm
-import requests
-from io import BytesIO
-import json
-
 from .model import Card
-
-def complete_scrython_data(scrython_object):
-    data = scrython_object.scryfallJson["data"]
-
-    if "total_cards" in scrython_object.scryfallJson and scrython_object.scryfallJson["total_cards"] > 2000:
-        yn = input(f"Your query has {scrython_object.scryfallJson['total_cards']} results. Are you sure you want to continue [y/N]? ")
-        if yn.lower() != 'y':
-            return []
-
-    while scrython_object.scryfallJson["has_more"]:
-        print(scrython_object.scryfallJson["next_page"])
-        scrython_object = scrython.foundation.FoundationObject(scrython_object.scryfallJson["next_page"], override=True)
-        data += scrython_object.scryfallJson["data"]
-    return data
+from .parser import parser
 
 
 
-def get_scryfall_cards(query):
-    return complete_scrython_data(scrython.Search(q=query, unique="prints", include_extras=True, include_multilingual=True))
 
-def get_scryfall_sets():
-    return complete_scrython_data(scrython.foundation.FoundationObject("sets?"))
+#def get_scryfall_cards(query):
+#    return complete_scrython_data(scrython.Search(q=query, unique="prints", include_extras=True, include_multilingual=True))
+
+#def get_scryfall_sets():
+#    return complete_scrython_data(scrython.foundation.FoundationObject("sets?"))
 
 
 #def find_by_scryfall_id(all_cards, id):
@@ -51,7 +33,6 @@ def get_scryfall_sets():
 
 
 def dbquery(query, session):
-    from .parser import parser
     parsed_query = parser.parse(query)
     for res in session.query(Card).filter(parsed_query.dbfilter()).all():
         print(f"{res.name}, {res.mana_cost}, {res.type_line}")

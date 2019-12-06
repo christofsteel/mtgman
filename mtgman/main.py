@@ -1,32 +1,23 @@
 from argparse import ArgumentParser
-#import datetime
-#import scrython
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-#from sqlalchemy.exc import IntegrityError
-#from sqlalchemy.orm.exc import NoResultFound
-#from .imports import import_sets, import_cards
-from .dbactions import dbquery
-from .collections import add_collection, list_collections, import_cards
-from .model import Base
-#import json
-#import os
 
+from .model import Base
 
 def main():
     engine = create_engine("sqlite:///test.db")
     Session = sessionmaker()
     Session.configure(bind=engine)
     Base.metadata.create_all(engine)
+
     session = Session()
-   
     parser = ArgumentParser()
     commands = parser.add_subparsers(title="commands", dest="command")
     
     dbparser = commands.add_parser("database", aliases=["db"])
     dbgroup = dbparser.add_mutually_exclusive_group(required=True)
     #dbgroup.add_argument("--get-editions", "-e", action="store_true")
-    #dbgroup.add_argument("--add", "-a", metavar="QUERY")
+    dbgroup.add_argument("--fetch", "-f", metavar="QUERY")
     dbgroup.add_argument("--query", "-q", metavar="QUERY")
 
     colparser = commands.add_parser("collection", aliases=["col"])
@@ -54,12 +45,14 @@ def main():
     if args.command == "database" or args.command == "db":
         #if args.get_editions:
         #    import_sets(session)
-        #elif args.add:
-        #    import_cards(args.add, session)
-        #elif args.query:
-        if args.query:
+        if args.fetch:            
+            from .imports.fetch import import_cards
+            import_cards(args.fetch, session)
+        elif args.query:
+            from .dbactions import dbquery
             dbquery(args.query, session)
     elif args.command == "collection" or args.command == 'col':
+        from .collections import add_collection, list_collections, import_cards
         if args.colcommand == "new" or args.colcommand == "n":
             add_collection(args.name, args.parent, session)
         elif args.colcommand == "list" or args.colcommand == "l":

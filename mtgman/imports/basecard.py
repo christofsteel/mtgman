@@ -1,10 +1,9 @@
 from datetime import datetime
 
-import scrython
-
 from . import create_dict
+from .scryfall import get_scryfall_base_card
 from .edition import get_edition
-from .card import create_card
+from .card import get_card
 from ..model import BaseCard
 
 def get_base_card(code, cn, session):
@@ -14,13 +13,12 @@ def get_base_card(code, cn, session):
     if base_card is not None:
         return base_card
 
-    sj = scrython.cards.collector.Collector(code=code,collector_number=cn).scryfallJson
+    sj = get_scryfall_base_card(code, cn) 
     basecard = add_base_card(sj,session)
     session.commit()
     return basecard
 
-def create_base_card(element, edition):
-    card = create_card(element)
+def create_base_card(element, card, edition):
 
     fields = [ "highres_image", "games", "oversized", "promo", "reprint"
              , "variation", "digital", "rarity"
@@ -72,6 +70,8 @@ def create_base_card(element, edition):
 
 def add_base_card(e, session):
     edition = get_edition(e.get("set"), session)
-    base_card = create_base_card(e, edition) 
+    card = get_card(e.get("name"), session)
+
+    base_card = create_base_card(e, card, edition) 
     session.add(base_card)
     return base_card

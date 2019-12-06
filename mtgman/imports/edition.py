@@ -1,16 +1,16 @@
 from datetime import datetime
 from uuid import UUID
 
-import scrython
 from sqlalchemy.orm.exc import NoResultFound
 
+from .scryfall import get_scryfall_edition
 from ..model import Edition, Block
 
 def get_edition(code, session):
     try:
         return session.query(Edition).filter(Edition.code == code).one()
     except NoResultFound:
-        sj = scrython.foundation.FoundationObject(f"sets/{code}?").scryfallJson
+        sj = get_scryfall_edition(code) 
         edition = create_edition(sj, session)
         session.commit()
         return edition
@@ -31,14 +31,14 @@ def create_edition(edition, session):
                        , icon_svg_uri = edition.get("icon_svg_uri")
                        , search_uri = edition.get("search_uri")
                        )
-        if edition.get("block_code") is not None:
-            block = session.query(Block).get(edition.get("block_code"))
-            if block is None:
-                block = Block(code = edition.get("block_code"), name = edition.get("block"))
-                session.add(block)
-            block.editions.append(db_edition)
-        if edition.get("parent_set_code") is not None:
-            parent = get_edition(edition.get("parent_set_code"), session)
-            db_edition.parent_edition = parent
         session.add(db_edition)
         return db_edition
+
+def add_edition(element, session):
+
+    if edition.get("block_code") is not None:
+        block = session.query(Block).get(edition.get("block_code"))
+        if block is None:
+            block = Block(code = edition.get("block_code"), name = edition.get("block"))
+    if edition.get("parent_set_code") is not None:
+        parent = get_edition(edition.get("parent_set_code"), session)

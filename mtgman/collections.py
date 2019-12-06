@@ -1,5 +1,7 @@
 from .model import Collection, CollectionCard, BaseCard, Printing, Edition
-from .imports import get_edition, get_base_card, get_printing
+from .imports.edition import get_edition
+from .imports.basecard import get_base_card
+from .imports.printing import get_printing
 import sys
 import csv
 from sqlalchemy.orm.exc import NoResultFound

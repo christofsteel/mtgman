@@ -18,6 +18,7 @@ def main():
     dbgroup = dbparser.add_mutually_exclusive_group(required=True)
     #dbgroup.add_argument("--get-editions", "-e", action="store_true")
     dbgroup.add_argument("--fetch", "-f", metavar="QUERY")
+    dbgroup.add_argument("--bulk", "-b", action="store_true")
     dbgroup.add_argument("--query", "-q", metavar="QUERY")
 
     colparser = commands.add_parser("collection", aliases=["col"])
@@ -46,11 +47,14 @@ def main():
         #if args.get_editions:
         #    import_sets(session)
         if args.fetch:            
-            from .imports.fetch import import_cards
-            import_cards(args.fetch, session)
+            from .imports.fetch import import_cards_from_query
+            import_cards_from_query(args.fetch, session)
         elif args.query:
             from .dbactions import dbquery
             dbquery(args.query, session)
+        elif args.bulk:
+            from .imports.fetch import import_cards_from_bulk
+            import_cards_from_bulk(0, session)
     elif args.command == "collection" or args.command == 'col':
         from .collections import add_collection, list_collections, import_cards
         if args.colcommand == "new" or args.colcommand == "n":

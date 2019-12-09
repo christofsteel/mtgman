@@ -68,7 +68,7 @@ class Edition(Base):
     uri = Column(String, nullable=False)
     icon_svg_uri = Column(String, nullable=False)
     search_uri = Column(String, nullable=False)
-    child_editions = relationship("Edition", backref=backref("parent_edition", remote_side=[code]))
+    child_editions = relationship("Edition", backref=backref("parent", remote_side=[code]))
 
 class Collection(Base):
     __tablename__ = "collection"
@@ -97,7 +97,7 @@ class Printing(Base):
     id = Column(Integer, primary_key=True)
     base_card_id = Column(Integer, ForeignKey("basecard.id"), nullable=False)
     base_card = relationship("BaseCard", backref="printings")
-    scryfall_id = Column(UUIDType, unique=True, nullable=False)
+    scryfall_id = Column(UUIDType)
     lang = Column(String, nullable=False)
     scryfall_uri = Column(String, nullable=False)
     uri = Column(String, nullable=False)

@@ -1,5 +1,7 @@
 count,cn,edition,lang,condition,foil
-99,U10,puma,en,nm,true
-3,98,con,pt,ex,false
-7,74,cns,zhs,,false
-0,274,mmq,fr,lp,false
+1,165,eld,en,nm,false
+1,165,eld,de,nm,false
+1,165,eld,it,nm,false
+1,299,eld,en,nm,false
+1,299,eld,it,nm,false
+1,299,eld,de,nm,false

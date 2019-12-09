@@ -6,15 +6,29 @@ from .edition import get_edition
 from .card import get_card, get_card_from_sf
 from ..model import BaseCard
 
+base_card_rel_cache = {}
+
+def base_card_bulk_add(session):
+    session.bulk_save_objects(base_card_rel_cache.values(), return_defaults=True)
+    session.commit()
+
+def base_card_prepare_bulk_add(element, session):
+    if (element["collector_number"], element["set"]) in base_card_rel_cache:
+        return
+    card = get_card(element["name"], session)
+    if get_db_base_card_from_sf(element, session) is None:
+        base_card_rel_cache[(element["collector_number"], element["set"])] = \
+                create_base_card(element, card, element["set"])
+
 def get_db_base_card(code, cn, session):
-    return session.query(BaseCard).filter(BaseCard.collector_number_str == cn)\
+    return  session.query(BaseCard).filter(BaseCard.collector_number_str == cn)\
             .filter(BaseCard.edition_code == code).first()
 
 def get_db_base_card_from_sf(e, session):
     return get_db_base_card(e["set"], e["collector_number"], session)
 
 def get_base_card_from_sf(e, session):
-    base_card = get_base_card_from_sf(e, session)
+    base_card = get_db_base_card_from_sf(e, session)
     if base_card is not None:
         return base_card
     base_card = add_base_card(e, session)
@@ -32,7 +46,7 @@ def get_base_card(code, cn, session):
     session.commit()
     return basecard
 
-def create_base_card(element, card, edition):
+def create_base_card(element, card, edition_code):
 
     fields = [ "highres_image", "games", "oversized", "promo", "reprint"
              , "variation", "digital", "rarity"
@@ -57,7 +71,11 @@ def create_base_card(element, card, edition):
                     , "eur" : ("price_eur", lambda x:float(x) if x is not None else x) } 
             }
     renames = { "foil" : "has_foil", "nonfoil" : "has_nonfoil", "collector_number": "collector_number_str"}
-    custom = {"edition": edition, "card": card}
+    if type(card) is int:
+        custom = {"edition_code": edition_code, "card_id": card}
+    else:
+        custom = {"edition_code": edition_code, "card": card}
+
     ignore = ["purchase_uris"]
     
     
@@ -86,6 +104,6 @@ def add_base_card(e, session):
     edition = get_edition(e.get("set"), session)
     card = get_card_from_sf(e, session)
 
-    base_card = create_base_card(e, card, edition) 
+    base_card = create_base_card(e, card, edition.code) 
     session.add(base_card)
     return base_card

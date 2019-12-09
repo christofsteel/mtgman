@@ -50,6 +50,7 @@ def import_cards(name, filename,session):
             #except NoResultFound:
             #    basecard = get_base_card(edition, row["cn"], session)
 
+            print(row)
             printing = get_printing(row["edition"], row["cn"], row["lang"], session)
             try:
                 collection_card = session.query(CollectionCard)\
@@ -60,6 +61,7 @@ def import_cards(name, filename,session):
 
                 collection_card.count += row["count"]
             except:
+                print("New card")
                 collection_card = CollectionCard(collection = collection, printing = printing\
                         , foil = row["foil"], condition = row["condition"], count = row["count"])
                 session.add(collection_card)

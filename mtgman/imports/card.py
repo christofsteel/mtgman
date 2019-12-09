@@ -15,6 +15,19 @@ from ..model import Card, Legality
 #        session.add(printing)
 #    session.commit()
 
+card_rel_cache = {}
+
+def card_bulk_add(session):
+    session.bulk_save_objects(card_rel_cache.values(), return_defaults=True)
+    session.commit()
+
+
+def card_prepare_bulk_add(element, session):
+    if element["name"] in card_rel_cache:
+        return
+    if get_db_card_from_sf(element, session) is None:
+        card_rel_cache[element["name"]] = create_card(element)
+
 def get_db_card(name, session):
     return session.query(Card).filter(Card.name == name).first()
 

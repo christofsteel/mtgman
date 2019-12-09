@@ -11,11 +11,11 @@ def get_edition(code, session):
         return session.query(Edition).filter(Edition.code == code).one()
     except NoResultFound:
         sj = get_scryfall_edition(code) 
-        edition = create_edition(sj, session)
+        edition = add_edition(sj, session)
         session.commit()
         return edition
 
-def create_edition(edition, session):
+def create_edition(edition, parent, block):
         db_edition = Edition( scryfall_id = UUID(edition.get("id"))
                        , code = edition.get("code")
                        , mtgo_code = edition.get("mtgo_code")
@@ -30,15 +30,20 @@ def create_edition(edition, session):
                        , uri = edition.get("uri")
                        , icon_svg_uri = edition.get("icon_svg_uri")
                        , search_uri = edition.get("search_uri")
+                       , parent = parent
+                       , block = block
                        )
-        session.add(db_edition)
         return db_edition
 
 def add_edition(element, session):
-
-    if edition.get("block_code") is not None:
-        block = session.query(Block).get(edition.get("block_code"))
+    block = None
+    parent = None
+    if element.get("block_code") is not None:
+        block = session.query(Block).get(element.get("block_code"))
         if block is None:
-            block = Block(code = edition.get("block_code"), name = edition.get("block"))
-    if edition.get("parent_set_code") is not None:
-        parent = get_edition(edition.get("parent_set_code"), session)
+            block = Block(code = element.get("block_code"), name = element.get("block"))
+    if element.get("parent_set_code") is not None:
+        parent = get_edition(element.get("parent_set_code"), session)
+    edition = create_edition(element, parent, block)
+    session.add(edition)
+    return edition

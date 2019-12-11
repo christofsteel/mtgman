@@ -1,7 +1,24 @@
 import scrython
 import urllib
 import requests
+from concurrent.futures import ThreadPoolExecutor
+import time
 from tqdm import tqdm
+
+def load_with_bar(url):
+    rq = requests.get(url, stream=True)
+    content_length = int(rq.headers.get("content-length"))
+
+    executor = ThreadPoolExecutor()
+    data = executor.submit(rq.json)
+    pbar = tqdm(total=content_length, unit='B', unit_scale=True, desc=url.split('/')[-1])
+    pos = 0
+    while not data.done():
+        time.sleep(0.01)
+        newpos = rq.raw.tell()
+        pbar.update(newpos - pos)
+        pos = newpos
+    return data.result()
 
 def complete_scrython_data(scrython_object):
     data = scrython_object.scryfallJson["data"]
@@ -20,8 +37,8 @@ def complete_scrython_data(scrython_object):
     return data
 
 def get_scryfall_bulk(level):
-    data = requests.get("https://archive.scryfall.com/json/scryfall-all-cards.json")
-    return data.json()
+    data = load_with_bar("https://archive.scryfall.com/json/scryfall-all-cards.json")
+    return data
 
 def get_scryfall_cards(query):
     return complete_scrython_data(scrython.Search(q=query, unique="prints", include_extras=True, include_multilingual=True))

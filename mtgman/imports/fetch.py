@@ -30,8 +30,7 @@ def import_cards(cards, session):
     old_card_faces_base = {(face[0], face[1]): face[2] for face in session.query(CardFaceBase.card_face_id, CardFaceBase.basecard_id, CardFaceBase.id)}
     old_card_faces_printing = {(face[0], face[1]): face[2] for face in session.query(CardFacePrinting.card_face_base_id, CardFacePrinting.card_printing_id, CardFacePrinting.id)}
 
-    print("Adding oracle cards")
-    for card in tqdm(cards):
+    for card in tqdm(cards, desc="Importing oracle cards", unit="cards"):
         if card["name"] in old_cards:
             continue
         elif card["name"] in new_cards:
@@ -42,8 +41,7 @@ def import_cards(cards, session):
     session.bulk_save_objects(list(new_cards.values()), return_defaults=True)
     session.commit()
 
-    print("Adding BaseCards")
-    for card in tqdm(cards):
+    for card in tqdm(cards, desc="Importing base cards", unit="cards"):
         if (card["collector_number"], card["set"]) in old_base_cards:
             continue
         elif (card["collector_number"], card["set"]) in new_base_cards:
@@ -56,8 +54,7 @@ def import_cards(cards, session):
     session.bulk_save_objects(list(new_base_cards.values()), return_defaults=True)
     session.commit()
 
-    print("Adding printings")
-    for card in tqdm(cards):
+    for card in tqdm(cards, desc="Importing printings", unit="cards"):
         if (card["collector_number"], card["set"], card["lang"]) in old_printings:
             continue
         elif (card["collector_number"], card["set"], card["lang"]) in new_printings:
@@ -71,8 +68,7 @@ def import_cards(cards, session):
     session.bulk_save_objects(list(new_printings.values()), return_defaults=True)
     session.commit()
 
-    print("Adding card faces")
-    for card in tqdm(cards):
+    for card in tqdm(cards, desc="Importing oracle faces", unit="cards"):
         if (card["collector_number"], card["set"], card["lang"]) in old_printings:
             continue
         elif "card_faces" in card.keys():
@@ -86,8 +82,7 @@ def import_cards(cards, session):
     session.bulk_save_objects(list(new_card_faces.values()), return_defaults=True)
     session.commit()
 
-    print("Adding card base faces")
-    for card in tqdm(cards):
+    for card in tqdm(cards, desc="Importing base faces", unit="cards"):
         if (card["collector_number"], card["set"], card["lang"]) in old_printings:
             continue
         elif "card_faces" in card.keys():
@@ -104,8 +99,7 @@ def import_cards(cards, session):
     session.bulk_save_objects(list(new_card_faces_base.values()), return_defaults=True)
     session.commit()
                 
-    print("Adding card faces printings")
-    for card in tqdm(cards):
+    for card in tqdm(cards, desc="Importing face printings", unit="cards"):
         if (card["collector_number"], card["set"], card["lang"]) in old_printings:
             continue
         elif "card_faces" in card.keys():

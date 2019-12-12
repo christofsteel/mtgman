@@ -36,7 +36,8 @@ def main():
     importcol.add_argument("--auto-add", '-a', action="store_true")
     importcol.add_argument("--edition", '-e')
     importcol.add_argument("--language", '-l')
-    importcol.add_argument("--foil", '-f', action="store_true")
+    importcol.add_argument("--condition", '-c')
+    importcol.add_argument("--foil", '-f')
 
     # --add
     # --import file.cvs
@@ -64,7 +65,7 @@ def main():
         elif args.colcommand == "edit" or args.colcommand == "e":
             pass
         elif args.colcommand == "import" or args.colcommand == "i":
-            import_cards(name = args.name, filename=args.file, session=session)
+            import_cards(args.name, args.file, args.edition, args.foil, args.language, args.condition, session)
 
 
 

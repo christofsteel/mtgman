@@ -28,7 +28,43 @@ def list_collections(session):
         parentstr = f"{collection.parent.name}/" if collection.parent is not None else "" 
         print(f"{parentstr}{collection.name}")
 
-def import_cards(name, filename,edition, foil, lang,condition,session):
+def parse_count(count_string, foil, lang, condition):
+    splitted = count_string.split("_")
+    splitted = splitted[1:]
+    while len(splitted) > 0:
+        if splitted[0] == "foil":
+            foil = splitted[0]
+        elif splitted[0] == "nonfoil":
+            foil = splitted[0]
+        elif splitted[0] in ["m", "nm", "ex", "gd", "lp", "pl", "poor"]:
+            condition = splitted[0]
+        else:
+            lang = splitted[0]
+        splitted = splitted[1:]
+    return foil, lang, condition
+
+def parse_row(row, edition, foil, lang, condition):
+    count_keys = [k for k in row.keys() if k.startswith("count")]
+    for c in count_keys:
+        try:
+            count = int(row[c])
+        except ValueError:
+            continue
+        
+        foil, lang, condition = parse_count(c, foil, lang, condition)
+        if lang:
+            row["lang"]=lang
+        if edition:
+            row["edition"]=edition
+        if foil:
+            row["foil"]=foil
+        if condition:
+            row["condition"]=condition
+        row["foil"] = True if "foil" in row and row["foil"].lower == "true" else False
+
+        yield count, row["edition"], row["foil"], row["lang"], row["condition"]
+
+def import_cards(name, filename, edition, foil, lang,condition,session):
     try:
         collection = session.query(Collection).filter(Collection.name == name).one()
     except NoResultFound:
@@ -37,43 +73,19 @@ def import_cards(name, filename,edition, foil, lang,condition,session):
     with open(filename) as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
-            try:
-                row["count"] = int(row["count"])
-                if lang:
-                    row["lang"]=lang
-                if edition:
-                    row["edition"]=edition
-                if foil:
-                    row["foil"]=foil
-                if condition:
-                    row["condition"]=condition
-                row["foil"] = True if "foil" in row and row["foil"].lower == "true" else False
-                #try:
-                #    edition = session.query(Edition).filter(Edition.code == row["edition"]).one()
-                #except NoResultFound:
-                #    edition = get_edition(row["edition"], session)
-                #try:
-                #    basecard = session.query(BaseCard)\
-                #            .filter(BaseCard.edition == edition)\
-                #            .filter(BaseCard.collector_number_str == row["cn"]).one()
-                #except NoResultFound:
-                #    basecard = get_base_card(edition, row["cn"], session)
-
-                #print(row)
-                printing = get_printing(row["edition"], row["cn"], row["lang"], session)
+            for inputrow in parse_row(row, edition, foil, lang, condition):
+                printing = get_printing(inputrow[1], row["cn"], inputrow[3], session)
                 try:
                     collection_card = session.query(CollectionCard)\
                             .filter(CollectionCard.collection == collection)\
                             .filter(CollectionCard.printing == printing)\
-                            .filter(CollectionCard.foil == row["foil"])\
-                            .filter(CollectionCard.condition == row["condition"]).one()
+                            .filter(CollectionCard.foil == inputrow[2])\
+                            .filter(CollectionCard.condition == inputrow[4]).one()
 
-                    collection_card.count += row["count"]
+                    collection_card.count += inputrow[0]
                 except:
                     print("New card")
                     collection_card = CollectionCard(collection = collection, printing = printing\
-                            , foil = row["foil"], condition = row["condition"], count = row["count"])
+                            , foil = inputrow[2], condition = inputrow[4], count = inputrow[0])
                     session.add(collection_card)
                     session.commit()
-            except ValueError:
-                continue

@@ -2,9 +2,27 @@ import ply
 from .model import Card
 from sqlalchemy import and_, or_, not_
 
+class Operator:
+    def __call__(self, a, b):
+        if self.string == "=":
+            return a == b
+        elif self.string == ":":
+            return a.contains(b)
+        elif self.string == "<":
+            return a < b
+        elif self.string == ">":
+            return a > b
+        elif self.string == "<=":
+            return a <= b
+        elif self.string == ">=":
+            return a >= b
+    def __init__(self, string):
+        self.string = string
+
 class Filter:    
     key = ""
     allkeys = []
+    attribute = None
 
     def __init__(self, value, operand="", exact=False):
         self.value = value
@@ -35,6 +53,7 @@ class Negation:
         self.ex = ex
 
     def __str__(self):
+
         return "-{ex}".format(**self.__dict__)
 
     def dbfilter(self):
@@ -67,7 +86,6 @@ class Conjunction:
 
     def __str__(self):
         return "{ex1} {ex2}".format(**self.__dict__)
-
 
 list_of_filters = [
         ["c","color"],
@@ -111,7 +129,7 @@ list_of_filters = [
         ]
 
 filterClasses = {l[0]: 
-        type("tokenClass_%s" % l, (Filter,), {"key": l[0], "allkeys":l})
+        type("tokenClass_%s" % l[0], (Filter,), {"key": l[0], "allkeys":l[:-1]})
         for l in list_of_filters}
 
 def findFilterClass(s):

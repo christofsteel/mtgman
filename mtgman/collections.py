@@ -5,6 +5,15 @@ from .imports.printing import get_printing
 import sys
 import csv
 from sqlalchemy.orm.exc import NoResultFound
+from .parser import parser
+
+def make_query():
+    pass
+
+def show_collection(name, query, forma, session):
+    db_query = session.query(CollectionCard).filter(Collection.name == name)
+    db_query = make_query(db_query, query)
+    breakpoint()
 
 def add_collection(name, parentname, session):
     parent = None

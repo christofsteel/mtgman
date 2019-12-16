@@ -31,7 +31,6 @@ from .parser import parser
 #            l.append(e)
 #    return l
 
-
 def dbquery(query, session):
     parsed_query = parser.parse(query)
     for res in session.query(Card).filter(parsed_query.dbfilter()).all():
